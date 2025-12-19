@@ -274,8 +274,6 @@ async function run() {
 
         res.send({ success: true });
       }
-
-      
     });
   } finally {
   }
