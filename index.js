@@ -275,6 +275,48 @@ async function run() {
         res.send({ success: true });
       }
     });
+
+    /* ======================
+   PROFILE ROUTES
+====================== */
+
+    // GET PROFILE
+    app.get("/profile", verifyFBToken, async (req, res) => {
+      try {
+        const email = req.decoded_email;
+
+        const user = await userCollection.findOne({ email });
+
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        res.send(user);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to get profile" });
+      }
+    });
+
+    // UPDATE PROFILE
+    app.patch("/profile", verifyFBToken, async (req, res) => {
+      try {
+        const email = req.decoded_email;
+        const updatedData = req.body;
+
+        // ❌ Prevent updating protected fields
+        delete updatedData._id;
+        delete updatedData.email;
+
+        const result = await userCollection.updateOne(
+          { email },
+          { $set: updatedData }
+        );
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to update profile" });
+      }
+    });
   } finally {
   }
 }
