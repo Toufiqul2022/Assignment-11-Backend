@@ -381,6 +381,33 @@ async function run() {
       }
     );
 
+// STRIPE PAYMENT
+
+    app.post("/create-payment-checkout", async (req, res) => {
+      const { donateAmount, donorEmail } = req.body;
+      const amount = parseInt(donateAmount) * 100;
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        customer_email: donorEmail,
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              unit_amount: amount,
+              product_data: { name: "Donation" },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${process.env.SITE_DOMAIN}/success-payment?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/payment-cancelled`,
+      });
+
+      res.send({ url: session.url });
+    });
+
 
 run().catch(console.dir);
 
