@@ -22,9 +22,8 @@ admin.initializeApp({
   credential: admin.credential.cert(JSON.parse(decodedKey)),
 });
 
-/* ======================
-   AUTH MIDDLEWARE
-====================== */
+// AUTH MIDDLEWARE
+
 const verifyFBToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -41,9 +40,8 @@ const verifyFBToken = async (req, res, next) => {
   }
 };
 
-/* ======================
-   MONGODB CONNECTION
-====================== */
+// MONGODB CONNECTION
+
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -63,9 +61,8 @@ async function run() {
     const requestCollection = db.collection("requests");
     const paymentCollection = db.collection("payment");
 
-    /* ======================
-       ROLE MIDDLEWARE
-    ====================== */
+  // ROLE MIDDLEWARE
+
     const verifyAdmin = async (req, res, next) => {
       const user = await userCollection.findOne({
         email: req.decoded_email,
@@ -107,9 +104,8 @@ async function run() {
       next();
     };
 
-    /* ======================
-       USERS
-    ====================== */
+// USERS
+
     app.post("/users", async (req, res) => {
       const user = req.body;
 
@@ -163,9 +159,8 @@ async function run() {
       }
     );
 
-    /* ======================
-       PROFILE
-    ====================== */
+// PROFILE
+
     app.get("/profile", verifyFBToken, async (req, res) => {
       const user = await userCollection.findOne({
         email: req.decoded_email,
@@ -188,9 +183,8 @@ async function run() {
       res.send(result);
     });
 
-    /* ======================
-       CREATE REQUEST (DONOR)
-    ====================== */
+// CREATE REQUEST (DONOR)
+
     app.post("/requests", verifyFBToken, verifyDonor, async (req, res) => {
       const data = req.body;
       data.requesterEmail = req.decoded_email;
@@ -201,9 +195,8 @@ async function run() {
       res.send(result);
     });
 
-    /* ======================
-       MY REQUESTS (DONOR)
-    ====================== */
+// MY REQUESTS (DONOR)
+
     app.get("/my-requests", verifyFBToken, verifyDonor, async (req, res) => {
       const email = req.decoded_email;
       const page = Number(req.query.page) || 1;
@@ -222,9 +215,8 @@ async function run() {
       res.send({ requests, total });
     });
 
-    /* ======================
-       ADMIN: ALL REQUESTS
-    ====================== */
+// ADMIN: ALL REQUESTS
+
     app.get("/admin/requests", verifyFBToken, verifyAdmin, async (req, res) => {
       const page = Number(req.query.page) || 1;
       const size = Number(req.query.size) || 10;
@@ -240,9 +232,8 @@ async function run() {
       res.send({ requests, total });
     });
 
-    /* ======================
-       VOLUNTEER: ALL REQUESTS (VIEW + FILTER)
-    ====================== */
+// VOLUNTEER: ALL REQUESTS (VIEW + FILTER)
+
     app.get(
       "/volunteer/requests",
       verifyFBToken,
@@ -255,9 +246,8 @@ async function run() {
       }
     );
 
-    /* ======================
-       PUBLIC SEARCH
-    ====================== */
+// PUBLIC SEARCH
+
     app.get("/search-requests", async (req, res) => {
       const { bloodGroup, district, upazila } = req.query;
       const query = {};
@@ -289,9 +279,8 @@ async function run() {
       res.send(result);
     });
 
-    /* ======================
-       TAKE DONATION
-    ====================== */
+// TAKE DONATION
+
     app.patch("/donation-requests/:id", verifyFBToken, async (req, res) => {
       const { id } = req.params;
 
@@ -318,9 +307,8 @@ async function run() {
       res.send(result);
     });
 
-    /* ======================
-       STATUS UPDATE
-    ====================== */
+// STATUS UPDATE
+
     app.patch(
       "/requests/status/:id",
       verifyFBToken,
@@ -366,9 +354,8 @@ async function run() {
       }
     );
 
-    /* ======================
-       DELETE REQUEST
-    ====================== */
+// DELETE REQUEST
+
     app.delete(
       "/requests/:id",
       verifyFBToken,
@@ -394,9 +381,8 @@ async function run() {
       }
     );
 
-    /* ======================
-       STRIPE PAYMENT
-    ====================== */
+// STRIPE PAYMENT
+
     app.post("/create-payment-checkout", async (req, res) => {
       const { donateAmount, donorEmail } = req.body;
       const amount = parseInt(donateAmount) * 100;
@@ -445,9 +431,8 @@ async function run() {
       }
     });
 
-    /* ======================
-       DASHBOARD STATS
-    ====================== */
+// DASHBOARD STATS
+
     app.get("/dashboard-stats", verifyFBToken, async (req, res) => {
       const totalUsers = await userCollection.countDocuments();
       const totalRequests = await requestCollection.countDocuments();
@@ -468,9 +453,7 @@ async function run() {
 
 run().catch(console.dir);
 
-/* ======================
-   ROOT
-====================== */
+
 app.get("/", (req, res) => {
   res.send("🚀 Blood Donation Server Running");
 });
