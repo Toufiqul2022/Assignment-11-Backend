@@ -431,7 +431,25 @@ async function run() {
       }
     });
 
+// DASHBOARD STATS
 
+    app.get("/dashboard-stats", verifyFBToken, async (req, res) => {
+      const totalUsers = await userCollection.countDocuments();
+      const totalRequests = await requestCollection.countDocuments();
+
+      const funding = await paymentCollection
+        .aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }])
+        .toArray();
+
+      res.send({
+        totalUsers,
+        totalRequests,
+        totalFunding: funding[0]?.total || 0,
+      });
+    });
+  } finally {
+  }
+}
 
 run().catch(console.dir);
 
