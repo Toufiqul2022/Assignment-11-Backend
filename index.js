@@ -67,7 +67,7 @@ async function run() {
     const paymentCollection = db.collection("payment");
 
     /* ======================
-       ADMIN CHECK
+       ROLE MIDDLEWARE
     ====================== */
     const verifyAdmin = async (req, res, next) => {
       const user = await userCollection.findOne({
@@ -76,6 +76,36 @@ async function run() {
 
       if (!user || user.role !== "admin") {
         return res.status(403).send({ message: "Forbidden" });
+      }
+      next();
+    };
+
+    const verifyVolunteer = async (req, res, next) => {
+      const user = await userCollection.findOne({
+        email: req.decoded_email,
+      });
+
+      if (!user || user.role !== "volunteer") {
+        return res.status(403).send({ message: "Volunteer only" });
+      }
+
+      if (user.status === "blocked") {
+        return res.status(403).send({ message: "User is blocked" });
+      }
+      next();
+    };
+
+    const verifyDonor = async (req, res, next) => {
+      const user = await userCollection.findOne({
+        email: req.decoded_email,
+      });
+
+      if (!user || user.role !== "donor") {
+        return res.status(403).send({ message: "Donor only" });
+      }
+
+      if (user.status === "blocked") {
+        return res.status(403).send({ message: "User is blocked" });
       }
       next();
     };
@@ -123,6 +153,19 @@ async function run() {
       }
     );
 
+    app.patch(
+      "/users/make-volunteer/:id",
+      verifyFBToken,
+      verifyAdmin,
+      async (req, res) => {
+        const result = await userCollection.updateOne(
+          { _id: new ObjectId(req.params.id) },
+          { $set: { role: "volunteer" } }
+        );
+        res.send(result);
+      }
+    );
+
     /* ======================
        PROFILE
     ====================== */
@@ -149,9 +192,9 @@ async function run() {
     });
 
     /* ======================
-       CREATE REQUEST
+       CREATE REQUEST (DONOR)
     ====================== */
-    app.post("/requests", verifyFBToken, async (req, res) => {
+    app.post("/requests", verifyFBToken, verifyDonor, async (req, res) => {
       const data = req.body;
       data.requesterEmail = req.decoded_email;
       data.status = "pending";
@@ -164,7 +207,7 @@ async function run() {
     /* ======================
        MY REQUESTS (DONOR)
     ====================== */
-    app.get("/my-requests", verifyFBToken, async (req, res) => {
+    app.get("/my-requests", verifyFBToken, verifyDonor, async (req, res) => {
       const email = req.decoded_email;
       const page = Number(req.query.page) || 1;
       const size = Number(req.query.size) || 10;
@@ -199,6 +242,21 @@ async function run() {
       const total = await requestCollection.countDocuments();
       res.send({ requests, total });
     });
+
+    /* ======================
+       VOLUNTEER: ALL REQUESTS (VIEW + FILTER)
+    ====================== */
+    app.get(
+      "/volunteer/requests",
+      verifyFBToken,
+      verifyVolunteer,
+      async (req, res) => {
+        const { status } = req.query;
+        const query = status ? { status } : {};
+        const result = await requestCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
 
     /* ======================
        PUBLIC SEARCH
@@ -266,19 +324,24 @@ async function run() {
     /* ======================
        STATUS UPDATE
     ====================== */
-    app.patch("/requests/status/:id", verifyFBToken, async (req, res) => {
-      const { status } = req.body;
+    app.patch(
+      "/requests/status/:id",
+      verifyFBToken,
+      verifyDonor,
+      async (req, res) => {
+        const { status } = req.body;
 
-      const result = await requestCollection.updateOne(
-        {
-          _id: new ObjectId(req.params.id),
-          requesterEmail: req.decoded_email,
-        },
-        { $set: { status } }
-      );
+        const result = await requestCollection.updateOne(
+          {
+            _id: new ObjectId(req.params.id),
+            requesterEmail: req.decoded_email,
+          },
+          { $set: { status } }
+        );
 
-      res.send(result);
-    });
+        res.send(result);
+      }
+    );
 
     app.patch(
       "/admin/requests/status/:id",
@@ -293,16 +356,34 @@ async function run() {
       }
     );
 
+    app.patch(
+      "/volunteer/requests/status/:id",
+      verifyFBToken,
+      verifyVolunteer,
+      async (req, res) => {
+        const result = await requestCollection.updateOne(
+          { _id: new ObjectId(req.params.id) },
+          { $set: { status: req.body.status } }
+        );
+        res.send(result);
+      }
+    );
+
     /* ======================
        DELETE REQUEST
     ====================== */
-    app.delete("/requests/:id", verifyFBToken, async (req, res) => {
-      const result = await requestCollection.deleteOne({
-        _id: new ObjectId(req.params.id),
-        requesterEmail: req.decoded_email,
-      });
-      res.send(result);
-    });
+    app.delete(
+      "/requests/:id",
+      verifyFBToken,
+      verifyDonor,
+      async (req, res) => {
+        const result = await requestCollection.deleteOne({
+          _id: new ObjectId(req.params.id),
+          requesterEmail: req.decoded_email,
+        });
+        res.send(result);
+      }
+    );
 
     app.delete(
       "/admin/requests/:id",
