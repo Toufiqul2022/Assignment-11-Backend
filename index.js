@@ -8,9 +8,7 @@ const admin = require("firebase-admin");
 const app = express();
 const port = process.env.PORT || 5000;
 
-/* ======================
-   MIDDLEWARE
-====================== */
+// MIDDLEWARE
 app.use(cors());
 app.use(express.json());
 
