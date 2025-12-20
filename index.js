@@ -408,6 +408,30 @@ async function run() {
       res.send({ url: session.url });
     });
 
+    app.get("/success-payment", async (req, res) => {
+      const session = await stripe.checkout.sessions.retrieve(
+        req.query.session_id
+      );
+
+      if (session.payment_status === "paid") {
+        const payment = {
+          amount: session.amount_total / 100,
+          donorEmail: session.customer_email,
+          transactionId: session.payment_intent,
+          status: session.payment_status,
+          paidAt: new Date(),
+        };
+
+        const exists = await paymentCollection.findOne({
+          transactionId: payment.transactionId,
+        });
+
+        if (!exists) await paymentCollection.insertOne(payment);
+        res.send({ success: true });
+      }
+    });
+
+
 
 run().catch(console.dir);
 
