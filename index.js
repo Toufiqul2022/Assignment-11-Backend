@@ -8,11 +8,8 @@ const admin = require("firebase-admin");
 const app = express();
 const port = process.env.PORT || 5000;
 
-// MIDDLEWARE
 app.use(cors());
 app.use(express.json());
-
-// FIREBASE ADMIN
 
 const decodedKey = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
   "utf8"
@@ -23,7 +20,6 @@ admin.initializeApp({
 });
 
 // AUTH MIDDLEWARE
-
 const verifyFBToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -41,7 +37,6 @@ const verifyFBToken = async (req, res, next) => {
 };
 
 // MONGODB CONNECTION
-
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -61,15 +56,13 @@ async function run() {
     const requestCollection = db.collection("requests");
     const paymentCollection = db.collection("payment");
 
-    // ROLE MIDDLEWARE
-
     const verifyAdmin = async (req, res, next) => {
       const user = await userCollection.findOne({
         email: req.decoded_email,
       });
 
       if (!user || user.role !== "admin") {
-        return res.status(403).send({ message: "Forbidden" });
+        return res.status(403).send({ message: "Forbidden: Admin Only" });
       }
       next();
     };
@@ -80,7 +73,7 @@ async function run() {
       });
 
       if (!user || user.role !== "volunteer") {
-        return res.status(403).send({ message: "Volunteer only" });
+        return res.status(403).send({ message: "Forbidden: Volunteer Only" });
       }
 
       if (user.status === "blocked") {
@@ -95,7 +88,7 @@ async function run() {
       });
 
       if (!user || user.role !== "donor") {
-        return res.status(403).send({ message: "Donor only" });
+        return res.status(403).send({ message: "Forbidden: Donor Only" });
       }
 
       if (user.status === "blocked") {
@@ -104,11 +97,9 @@ async function run() {
       next();
     };
 
-    // USERS
-
+    // Create User
     app.post("/users", async (req, res) => {
       const user = req.body;
-
       const exists = await userCollection.findOne({ email: user.email });
       if (exists) return res.send({ message: "User already exists" });
 
@@ -120,11 +111,13 @@ async function run() {
       res.send(result);
     });
 
+    // Get All Users
     app.get("/users", verifyFBToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
+    // Get User Role
     app.get("/users/role/:email", async (req, res) => {
       const user = await userCollection.findOne({
         email: req.params.email,
@@ -132,6 +125,7 @@ async function run() {
       res.send({ role: user?.role, status: user?.status });
     });
 
+    // Update User Status
     app.patch(
       "/update/user/status",
       verifyFBToken,
@@ -146,6 +140,7 @@ async function run() {
       }
     );
 
+    // Make Volunteer
     app.patch(
       "/users/make-volunteer/:id",
       verifyFBToken,
@@ -159,7 +154,7 @@ async function run() {
       }
     );
 
-    // PROFILE
+    // PROFILE ROUTES
 
     app.get("/profile", verifyFBToken, async (req, res) => {
       const user = await userCollection.findOne({
@@ -183,8 +178,7 @@ async function run() {
       res.send(result);
     });
 
-    // CREATE REQUEST (DONOR)
-
+    // Create Request (Donor)
     app.post("/requests", verifyFBToken, verifyDonor, async (req, res) => {
       const data = req.body;
       data.requesterEmail = req.decoded_email;
@@ -195,8 +189,7 @@ async function run() {
       res.send(result);
     });
 
-    // MY REQUESTS (DONOR)
-
+    // My Requests
     app.get("/my-requests", verifyFBToken, verifyDonor, async (req, res) => {
       const email = req.decoded_email;
       const page = Number(req.query.page) || 1;
@@ -215,8 +208,7 @@ async function run() {
       res.send({ requests, total });
     });
 
-    // ADMIN: ALL REQUESTS
-
+    // Admin: All Requests
     app.get("/admin/requests", verifyFBToken, verifyAdmin, async (req, res) => {
       const page = Number(req.query.page) || 1;
       const size = Number(req.query.size) || 10;
@@ -232,8 +224,7 @@ async function run() {
       res.send({ requests, total });
     });
 
-    // VOLUNTEER: ALL REQUESTS (VIEW + FILTER)
-
+    // Volunteer: All Requests
     app.get(
       "/volunteer/requests",
       verifyFBToken,
@@ -246,8 +237,7 @@ async function run() {
       }
     );
 
-    // PUBLIC SEARCH
-
+    // Public Search
     app.get("/search-requests", async (req, res) => {
       const { bloodGroup, district, upazila } = req.query;
       const query = {};
@@ -260,6 +250,7 @@ async function run() {
       res.send(result);
     });
 
+    // Public Pending Requests
     app.get("/donation-requests", async (req, res) => {
       const result = await requestCollection
         .find({ status: "pending" })
@@ -269,6 +260,7 @@ async function run() {
       res.send(result);
     });
 
+    // Request Details
     app.get("/donation-requests/:id", verifyFBToken, async (req, res) => {
       const { id } = req.params;
       const result = await requestCollection.findOne({
@@ -279,8 +271,7 @@ async function run() {
       res.send(result);
     });
 
-    // TAKE DONATION
-
+    // Take Donation
     app.patch("/donation-requests/:id", verifyFBToken, async (req, res) => {
       const { id } = req.params;
 
@@ -307,8 +298,7 @@ async function run() {
       res.send(result);
     });
 
-    // STATUS UPDATE
-
+    // Donor Updates Status
     app.patch(
       "/requests/status/:id",
       verifyFBToken,
@@ -328,6 +318,7 @@ async function run() {
       }
     );
 
+    // Admin Updates Status
     app.patch(
       "/admin/requests/status/:id",
       verifyFBToken,
@@ -341,6 +332,7 @@ async function run() {
       }
     );
 
+    // Volunteer Updates Status
     app.patch(
       "/volunteer/requests/status/:id",
       verifyFBToken,
@@ -354,7 +346,7 @@ async function run() {
       }
     );
 
-    // DELETE REQUEST
+    // DELETE REQUEST ROUTES
 
     app.delete(
       "/requests/:id",
@@ -381,7 +373,7 @@ async function run() {
       }
     );
 
-    // STRIPE PAYMENT
+    // STRIPE PAYMENT ROUTES
 
     app.post("/create-payment-checkout", async (req, res) => {
       const { donateAmount, donorEmail } = req.body;
@@ -431,8 +423,6 @@ async function run() {
       }
     });
 
-    // DASHBOARD STATS
-
     app.get("/dashboard-stats", verifyFBToken, async (req, res) => {
       const totalUsers = await userCollection.countDocuments();
       const totalRequests = await requestCollection.countDocuments();
@@ -447,6 +437,7 @@ async function run() {
         totalFunding: funding[0]?.total || 0,
       });
     });
+
     // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
