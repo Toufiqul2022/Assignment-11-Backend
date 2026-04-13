@@ -169,15 +169,6 @@ async function run() {
       res.send(result);
     });
 
-    // ── PUBLIC GET /requests (Blood Donation Requests page) ──────────────────
-    app.get("/requests", async (req, res) => {
-      const result = await requestCollection
-        .find({ status: "pending" })
-        .sort({ createdAt: -1 })
-        .toArray();
-      res.send(result);
-    });
-
     app.get("/my-requests", verifyFBToken, verifyDonor, async (req, res) => {
       const page = Number(req.query.page) || 1;
       const size = Number(req.query.size) || 10;
@@ -332,13 +323,44 @@ async function run() {
       },
     );
 
+    // Search donation requests by blood group / district / upazila
     app.get("/search-requests", async (req, res) => {
       const { bloodGroup, district, upazila } = req.query;
-      const query = {};
+      const query = { status: "pending" };
       if (bloodGroup) query.bloodGroup = bloodGroup;
       if (district) query.district = district;
       if (upazila) query.upazila = upazila;
       const result = await requestCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // ── SEARCH DONORS (users) by blood / district / upazila ──────────────────
+    app.get("/search-donors", async (req, res) => {
+      const { bloodGroup, district, upazila } = req.query;
+      const query = { status: "active" };
+      if (bloodGroup) query.blood = bloodGroup;
+      if (district) query.district = district;
+      if (upazila) query.upazila = upazila;
+      const result = await userCollection
+        .find(query, {
+          projection: {
+            name: 1,
+            blood: 1,
+            district: 1,
+            upazila: 1,
+            photoURL: 1,
+          },
+        })
+        .toArray();
+      res.send(result);
+    });
+
+    // ── PUBLIC GET /requests (Blood Donation Requests page) ──────────────────
+    app.get("/requests", async (req, res) => {
+      const result = await requestCollection
+        .find({ status: "pending" })
+        .sort({ createdAt: -1 })
+        .toArray();
       res.send(result);
     });
 
