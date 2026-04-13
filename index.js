@@ -325,7 +325,9 @@ async function run() {
 
     // Search donation requests by blood group / district / upazila
     app.get("/search-requests", async (req, res) => {
-      const { bloodGroup, district, upazila } = req.query;
+      const bloodGroup = (req.query.bloodGroup || "").trim();
+      const district = (req.query.district || "").trim();
+      const upazila = (req.query.upazila || "").trim();
       const query = { status: "pending" };
       if (bloodGroup) query.bloodGroup = bloodGroup;
       if (district) query.district = district;
@@ -336,8 +338,11 @@ async function run() {
 
     // ── SEARCH DONORS (users) by blood / district / upazila ──────────────────
     app.get("/search-donors", async (req, res) => {
-      const { bloodGroup, district, upazila } = req.query;
-      const query = { status: "active" };
+      const bloodGroup = (req.query.bloodGroup || "").trim();
+      const district = (req.query.district || "").trim();
+      const upazila = (req.query.upazila || "").trim();
+      // Allow active users OR users where status field doesn't exist yet
+      const query = { status: { $not: { $eq: "blocked" } } };
       if (bloodGroup) query.blood = bloodGroup;
       if (district) query.district = district;
       if (upazila) query.upazila = upazila;
