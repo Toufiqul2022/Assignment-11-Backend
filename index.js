@@ -14,6 +14,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:5174",
+      "https://assignment-11-frontend-pi.vercel.app",
       process.env.SITE_DOMAIN,
     ].filter(Boolean),
     credentials: true,
@@ -168,7 +169,7 @@ async function run() {
       res.send(result);
     });
 
-    // ── PUBLIC: GET /requests (used by BloodDonationRequests page) ───────────
+    // ── PUBLIC GET /requests (Blood Donation Requests page) ──────────────────
     app.get("/requests", async (req, res) => {
       const result = await requestCollection
         .find({ status: "pending" })
