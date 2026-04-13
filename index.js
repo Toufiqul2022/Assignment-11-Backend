@@ -168,6 +168,15 @@ async function run() {
       res.send(result);
     });
 
+    // ── PUBLIC: GET /requests (used by BloodDonationRequests page) ───────────
+    app.get("/requests", async (req, res) => {
+      const result = await requestCollection
+        .find({ status: "pending" })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.send(result);
+    });
+
     app.get("/my-requests", verifyFBToken, verifyDonor, async (req, res) => {
       const page = Number(req.query.page) || 1;
       const size = Number(req.query.size) || 10;
@@ -183,6 +192,15 @@ async function run() {
     });
 
     app.get("/donation-requests", async (req, res) => {
+      const result = await requestCollection
+        .find({ status: "pending" })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    // Alias — some frontend pages call /requests directly
+    app.get("/requests", async (req, res) => {
       const result = await requestCollection
         .find({ status: "pending" })
         .sort({ createdAt: -1 })
